@@ -45,6 +45,8 @@ const char* kLegacyConfigFile = "melonDS.ini";
 const char* kLegacyUniqueConfigFile = "melonDS.%d.ini";
 
 toml::value RootTable;
+static std::optional<std::string> ActiveConfigPath;
+static std::string LastError;
 
 DefaultList<int> DefaultInts =
 {
@@ -782,12 +784,25 @@ bool LoadLegacy()
     return true;
 }
 
-bool Load()
+bool Load(const std::optional<std::string>& configPath)
 {
-    auto cfgpath = Platform::GetLocalFilePath(kConfigFile);
+    LastError.clear();
+
+    const bool customConfig = configPath.has_value();
+    std::string cfgpath = customConfig ? *configPath : Platform::GetLocalFilePath(kConfigFile);
+    ActiveConfigPath = cfgpath;
+
+    if (customConfig && !Platform::FileExists(cfgpath))
+    {
+        LastError = "The specified configuration file does not exist:\n" + cfgpath;
+        return false;
+    }
 
     if (!Platform::CheckFileWritable(cfgpath))
+    {
+        LastError = "Unable to write to configuration file:\n" + cfgpath;
         return false;
+    }
 
     RootTable = toml::value();
 
@@ -798,9 +813,13 @@ bool Load()
     {
         RootTable = toml::parse(std::filesystem::u8path(cfgpath));
     }
-    catch (toml::syntax_error& err)
+    catch (toml::exception& err)
     {
-        //RootTable = toml::table();
+        if (customConfig)
+        {
+            LastError = "Unable to parse the specified configuration file:\n" + cfgpath + "\n\n" + err.what();
+            return false;
+        }
     }
 
     return true;
@@ -808,7 +827,7 @@ bool Load()
 
 void Save()
 {
-    auto cfgpath = Platform::GetLocalFilePath(kConfigFile);
+    std::string cfgpath = ActiveConfigPath.value_or(Platform::GetLocalFilePath(kConfigFile));
     if (!Platform::CheckFileWritable(cfgpath))
         return;
 
@@ -816,6 +835,11 @@ void Save()
     file.open(std::filesystem::u8path(cfgpath), std::ofstream::out | std::ofstream::trunc);
     file << RootTable;
     file.close();
+}
+
+const std::string& GetLastError()
+{
+    return LastError;
 }
 
 

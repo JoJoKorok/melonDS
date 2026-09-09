@@ -363,10 +363,23 @@ int main(int argc, char** argv)
     SDL_InitSubSystem(SDL_INIT_VIDEO);
     SDL_EnableScreenSaver(); SDL_DisableScreenSaver();
 
-    if (!Config::Load())
-        QMessageBox::critical(nullptr,
-                              "melonDS",
-                              "Unable to write to config.\nPlease check the write permissions of the folder you placed melonDS in.");
+    std::optional<std::string> configPath;
+    if (options->configPath)
+        configPath = options->configPath->toStdString();
+
+    if (!Config::Load(configPath))
+    {
+        QString error = QString::fromStdString(Config::GetLastError());
+        fprintf(stderr, "%s\n", Config::GetLastError().c_str());
+        QMessageBox::critical(nullptr, "melonDS", error);
+
+        if (configPath)
+        {
+            delete options;
+            SDL_Quit();
+            return 1;
+        }
+    }
 
     camStarted[0] = false;
     camStarted[1] = false;

@@ -19,6 +19,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <optional>
 #include <variant>
 #include <string>
 #include <QString>
@@ -130,8 +131,9 @@ private:
 };
 
 
-bool Load();
+bool Load(const std::optional<std::string>& configPath = std::nullopt);
 void Save();
+const std::string& GetLastError();
 
 Table GetLocalTable(int instance);
 inline Table GetGlobalTable() { return GetLocalTable(-1); }
