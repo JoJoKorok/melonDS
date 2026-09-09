@@ -47,6 +47,7 @@ const char* kLegacyUniqueConfigFile = "melonDS.%d.ini";
 toml::value RootTable;
 static std::optional<std::string> ActiveConfigPath;
 static std::string LastError;
+static bool SaveEnabled = true;
 
 DefaultList<int> DefaultInts =
 {
@@ -784,9 +785,32 @@ bool LoadLegacy()
     return true;
 }
 
-bool Load(const std::optional<std::string>& configPath)
+static void MergeConfig(toml::value& base, const toml::value& overlay)
+{
+    if (!base.is_table() || !overlay.is_table())
+    {
+        base = overlay;
+        return;
+    }
+
+    for (const auto& item : overlay.as_table())
+    {
+        const std::string& key = item.first;
+        const toml::value& overlayValue = item.second;
+        toml::value& baseValue = base[key];
+
+        if (baseValue.is_table() && overlayValue.is_table())
+            MergeConfig(baseValue, overlayValue);
+        else
+            baseValue = overlayValue;
+    }
+}
+
+bool Load(const std::optional<std::string>& configPath,
+          const std::optional<std::string>& appendConfigPath)
 {
     LastError.clear();
+    SaveEnabled = !appendConfigPath.has_value();
 
     const bool customConfig = configPath.has_value();
     std::string cfgpath = customConfig ? *configPath : Platform::GetLocalFilePath(kConfigFile);
@@ -807,17 +831,42 @@ bool Load(const std::optional<std::string>& configPath)
     RootTable = toml::value();
 
     if (!Platform::FileExists(cfgpath))
-        return LoadLegacy();
-
-    try
     {
-        RootTable = toml::parse(std::filesystem::u8path(cfgpath));
+        if (!LoadLegacy())
+            return false;
     }
-    catch (toml::exception& err)
+    else
     {
-        if (customConfig)
+        try
         {
-            LastError = "Unable to parse the specified configuration file:\n" + cfgpath + "\n\n" + err.what();
+            RootTable = toml::parse(std::filesystem::u8path(cfgpath));
+        }
+        catch (toml::exception& err)
+        {
+            if (customConfig || appendConfigPath)
+            {
+                LastError = "Unable to parse configuration file:\n" + cfgpath + "\n\n" + err.what();
+                return false;
+            }
+        }
+    }
+
+    if (appendConfigPath)
+    {
+        if (!Platform::FileExists(*appendConfigPath))
+        {
+            LastError = "The specified additional configuration file does not exist:\n" + *appendConfigPath;
+            return false;
+        }
+
+        try
+        {
+            toml::value overlay = toml::parse(std::filesystem::u8path(*appendConfigPath));
+            MergeConfig(RootTable, overlay);
+        }
+        catch (toml::exception& err)
+        {
+            LastError = "Unable to parse the specified additional configuration file:\n" + *appendConfigPath + "\n\n" + err.what();
             return false;
         }
     }
@@ -827,6 +876,9 @@ bool Load(const std::optional<std::string>& configPath)
 
 void Save()
 {
+    if (!SaveEnabled)
+        return;
+
     std::string cfgpath = ActiveConfigPath.value_or(Platform::GetLocalFilePath(kConfigFile));
     if (!Platform::CheckFileWritable(cfgpath))
         return;

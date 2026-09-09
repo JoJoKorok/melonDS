@@ -131,7 +131,8 @@ private:
 };
 
 
-bool Load(const std::optional<std::string>& configPath = std::nullopt);
+bool Load(const std::optional<std::string>& configPath = std::nullopt,
+          const std::optional<std::string>& appendConfigPath = std::nullopt);
 void Save();
 const std::string& GetLastError();
 

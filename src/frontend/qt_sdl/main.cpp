@@ -367,13 +367,17 @@ int main(int argc, char** argv)
     if (options->configPath)
         configPath = options->configPath->toStdString();
 
-    if (!Config::Load(configPath))
+    std::optional<std::string> appendConfigPath;
+    if (options->appendConfigPath)
+        appendConfigPath = options->appendConfigPath->toStdString();
+
+    if (!Config::Load(configPath, appendConfigPath))
     {
         QString error = QString::fromStdString(Config::GetLastError());
         fprintf(stderr, "%s\n", Config::GetLastError().c_str());
         QMessageBox::critical(nullptr, "melonDS", error);
 
-        if (configPath)
+        if (configPath || appendConfigPath)
         {
             delete options;
             SDL_Quit();

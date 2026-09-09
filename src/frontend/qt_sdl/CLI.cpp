@@ -43,6 +43,7 @@ CommandLineOptions* ManageArgs(QApplication& melon)
 
     parser.addOption(QCommandLineOption({"b", "boot"}, "Whether to boot firmware on startup. Defaults to \"auto\" (boot if NDS rom given)", "auto/always/never", "auto"));
     parser.addOption(QCommandLineOption({"c", "config"}, "Use the specified TOML configuration file", "file"));
+    parser.addOption(QCommandLineOption({"append-config", "appendconfig"}, "Temporarily override settings with an additional TOML configuration file", "file"));
     parser.addOption(QCommandLineOption({"f", "fullscreen"}, "Start melonDS in fullscreen mode"));
 
 #ifdef ARCHIVE_SUPPORT_ENABLED
@@ -57,6 +58,8 @@ CommandLineOptions* ManageArgs(QApplication& melon)
     options->fullscreen = parser.isSet("fullscreen");
     if (parser.isSet("config"))
         options->configPath = parser.value("config");
+    if (parser.isSet("append-config"))
+        options->appendConfigPath = parser.value("append-config");
 
     QStringList posargs = parser.positionalArguments();
     switch (posargs.size())
