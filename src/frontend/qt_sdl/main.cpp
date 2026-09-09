@@ -29,6 +29,7 @@
 #include <QMessageBox>
 #include <QMenuBar>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QInputDialog>
 #include <QPainter>
 #include <QKeyEvent>
@@ -365,11 +366,11 @@ int main(int argc, char** argv)
 
     std::optional<std::string> configPath;
     if (options->configPath)
-        configPath = options->configPath->toStdString();
+        configPath = QFileInfo(*options->configPath).absoluteFilePath().toStdString();
 
     std::optional<std::string> appendConfigPath;
     if (options->appendConfigPath)
-        appendConfigPath = options->appendConfigPath->toStdString();
+        appendConfigPath = QFileInfo(*options->appendConfigPath).absoluteFilePath().toStdString();
 
     if (!Config::Load(configPath, appendConfigPath))
     {
