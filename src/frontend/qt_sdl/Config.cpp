@@ -822,7 +822,7 @@ bool Load(const std::optional<std::string>& configPath,
         return false;
     }
 
-    if (!Platform::CheckFileWritable(cfgpath))
+    if (SaveEnabled && !Platform::CheckFileWritable(cfgpath))
     {
         LastError = "Unable to write to configuration file:\n" + cfgpath;
         return false;
