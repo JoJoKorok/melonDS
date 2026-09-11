@@ -810,6 +810,9 @@ bool Load(const std::optional<std::string>& configPath,
           const std::optional<std::string>& appendConfigPath)
 {
     LastError.clear();
+
+    // Runtime changes and overlay values share the same table, so suppress all
+    // writes to prevent temporary values from leaking into the base config.
     SaveEnabled = !appendConfigPath.has_value();
 
     const bool customConfig = configPath.has_value();
